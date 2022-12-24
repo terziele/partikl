@@ -1,6 +1,9 @@
 use crate::core::Type::Toggle;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::io::empty;
 
+#[derive(Clone, Debug)]
 pub enum PropertyValue {
     String(String),
     Integer(i32),
@@ -8,6 +11,7 @@ pub enum PropertyValue {
     Toggle(bool),
 }
 
+#[derive(Clone, Debug)]
 pub struct EntityProperty {
     name: String,
     value: PropertyValue,
@@ -28,6 +32,7 @@ pub struct Entity {
     props: Vec<EntityProperty>,
 }
 
+#[derive(Clone, Debug)]
 pub enum Type {
     String,
     Integer,
@@ -35,6 +40,7 @@ pub enum Type {
     Toggle,
 }
 
+#[derive(Clone, Debug)]
 pub struct SchemaProperty {
     name: String,
     prop_type: Type,
@@ -49,6 +55,7 @@ impl Into<SchemaProperty> for (&str, Type) {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Schema {
     name: String,
     properties: Vec<SchemaProperty>,
@@ -56,10 +63,34 @@ pub struct Schema {
 
 impl Schema {
     pub fn create_entity(&self, entity_props: Vec<EntityProperty>) -> Result<Entity, Vec<String>> {
+        let schema_props = self.props_map();
+        let diff = self.find_missing_keys(&entity_props);
+        println!("Entity missing some schema specified keys: {:?}", diff);
+
         Ok(Entity {
             id: "".to_string(),
             props: vec![],
         })
+    }
+
+    fn props_map(&self) -> HashMap<String, SchemaProperty> {
+        self.clone()
+            .properties
+            .iter()
+            .cloned()
+            .map(|p| (p.name.clone(), p))
+            .collect::<HashMap<String, SchemaProperty>>()
+    }
+
+    fn find_missing_keys(&self, entity_props: &[EntityProperty]) -> Vec<String> {
+        let schema_props = self.props_map();
+        let schema_keys = schema_props.keys().collect::<HashSet<&String>>();
+        let entity_keys = entity_props
+            .iter()
+            .map(|p| p.name())
+            .collect::<HashSet<&String>>();
+
+        (&schema_keys - &entity_keys).into_iter().cloned().collect()
     }
 }
 
